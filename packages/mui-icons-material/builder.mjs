@@ -235,59 +235,67 @@ async function worker({ progress, svgPath, options, renameFilter, template }) {
 }
 
 export async function handler(options) {
-  const progress = options.disableLog ? () => {} : () => process.stdout.write('.');
+  // const progress = options.disableLog ? () => {} : () => process.stdout.write('.');
 
-  rimraf.sync(`${options.outputDir}/*.js`); // Clean old files
+  // rimraf.sync(`${options.outputDir}/*.js`); // Clean old files
 
-  let renameFilter = options.renameFilter;
-  if (typeof renameFilter === 'string') {
-    const renameFilterModule = await import(renameFilter);
-    renameFilter = renameFilterModule.default;
-  }
-  if (typeof renameFilter !== 'function') {
-    throw Error('renameFilter must be a function');
-  }
-  await fse.ensureDir(options.outputDir);
+  console.warn('WARN: builder.mjs script was heavily modified to use pre-built files.')
 
-  const [svgPaths, template] = await Promise.all([
-    globAsync(normalizePath(path.join(options.svgDir, options.glob))),
-    fse.readFile(path.join(currentDirectory, 'templateSvgIcon.js'), {
-      encoding: 'utf8',
-    }),
-  ]);
-
-  const queue = new Queue(
-    (svgPath) =>
-      worker({
-        progress,
-        svgPath,
-        options,
-        renameFilter,
-        template,
-      }),
-    { concurrency: 8 },
-  );
-
-  queue.push(svgPaths);
-  await queue.wait({ empty: true });
-
-  let legacyFiles = await globAsync(normalizePath(path.join(currentDirectory, '/legacy', '*.js')));
-  legacyFiles = legacyFiles.map((file) => path.basename(file));
-  let generatedFiles = await globAsync(normalizePath(path.join(options.outputDir, '*.js')));
-  generatedFiles = generatedFiles.map((file) => path.basename(file));
-
-  const duplicatedIconsLegacy = intersection(legacyFiles, generatedFiles);
-  if (duplicatedIconsLegacy.length > 0) {
-    throw new Error(
-      `Duplicated icons in legacy folder. Either \n` +
-        `1. Remove these from the /legacy folder\n` +
-        `2. Add them to the blacklist to keep the legacy version\n` +
-        `The following icons are duplicated: \n${duplicatedIconsLegacy.join('\n')}`,
-    );
+  try {
+    fse.unlinkSync(`${options.outputDir}/index.js`);
+  } catch (e) {
+    // noop
   }
 
-  await fse.copy(path.join(currentDirectory, '/legacy'), options.outputDir);
-  await fse.copy(path.join(currentDirectory, '/custom'), options.outputDir);
+  // let renameFilter = options.renameFilter;
+  // if (typeof renameFilter === 'string') {
+  //   const renameFilterModule = await import(renameFilter);
+  //   renameFilter = renameFilterModule.default;
+  // }
+  // if (typeof renameFilter !== 'function') {
+  //   throw Error('renameFilter must be a function');
+  // }
+  // await fse.ensureDir(options.outputDir);
+
+  // const [svgPaths, template] = await Promise.all([
+  //   globAsync(normalizePath(path.join(options.svgDir, options.glob))),
+  //   fse.readFile(path.join(currentDirectory, 'templateSvgIcon.js'), {
+  //     encoding: 'utf8',
+  //   }),
+  // ]);
+
+  // const queue = new Queue(
+  //   (svgPath) =>
+  //     worker({
+  //       progress,
+  //       svgPath,
+  //       options,
+  //       renameFilter,
+  //       template,
+  //     }),
+  //   { concurrency: 8 },
+  // );
+
+  // queue.push(svgPaths);
+  // await queue.wait({ empty: true });
+
+  // let legacyFiles = await globAsync(normalizePath(path.join(currentDirectory, '/legacy', '*.js')));
+  // legacyFiles = legacyFiles.map((file) => path.basename(file));
+  // let generatedFiles = await globAsync(normalizePath(path.join(options.outputDir, '*.js')));
+  // generatedFiles = generatedFiles.map((file) => path.basename(file));
+
+  // const duplicatedIconsLegacy = intersection(legacyFiles, generatedFiles);
+  // if (duplicatedIconsLegacy.length > 0) {
+  //   throw new Error(
+  //     `Duplicated icons in legacy folder. Either \n` +
+  //       `1. Remove these from the /legacy folder\n` +
+  //       `2. Add them to the blacklist to keep the legacy version\n` +
+  //       `The following icons are duplicated: \n${duplicatedIconsLegacy.join('\n')}`,
+  //   );
+  // }
+
+  // await fse.copy(path.join(currentDirectory, '/legacy'), options.outputDir);
+  // await fse.copy(path.join(currentDirectory, '/custom'), options.outputDir);
 
   await generateIndex(options);
 }
