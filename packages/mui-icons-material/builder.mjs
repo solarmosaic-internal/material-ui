@@ -1,18 +1,16 @@
 import fse from 'fs-extra';
 import yargs from 'yargs';
 import path from 'path';
-import rimraf from 'rimraf';
 import Mustache from 'mustache';
 import globAsync from 'fast-glob';
 import * as svgo from 'svgo';
 import { fileURLToPath } from 'url';
-import intersection from 'lodash/intersection.js';
-import Queue from '../../modules/waterfall/Queue.mjs';
-
-const currentDirectory = fileURLToPath(new URL('.', import.meta.url));
+import { exec } from 'node:child_process';
 
 export const RENAME_FILTER_DEFAULT = './renameFilters/default.mjs';
 export const RENAME_FILTER_MUI = './renameFilters/material-design-icons.mjs';
+
+const currentDirectory = fileURLToPath(new URL('.', import.meta.url));
 
 /**
  * Converts directory separators to slashes, so the path can be used in fast-glob.
@@ -239,7 +237,7 @@ export async function handler(options) {
 
   // rimraf.sync(`${options.outputDir}/*.js`); // Clean old files
 
-  console.warn('WARN: builder.mjs script was heavily modified to use pre-built files.')
+  console.warn('WARN: builder.mjs script was heavily modified to use pre-built files.');
 
   try {
     fse.unlinkSync(`${options.outputDir}/index.js`);
@@ -298,6 +296,21 @@ export async function handler(options) {
   // await fse.copy(path.join(currentDirectory, '/custom'), options.outputDir);
 
   await generateIndex(options);
+
+  exec(
+    'npm install --ignore-scripts',
+    { cwd: path.join(currentDirectory, '/build') },
+    (err, output) => {
+      // once the command has completed, the callback function is called
+      if (err) {
+        // log and return if we encounter an error
+        console.error('could not execute command: ', err);
+        return;
+      }
+      // log the output received from the command
+      console.info('INFO: NPM packages were installed into built package.', output);
+    },
+  );
 }
 
 const nodePath = path.resolve(process.argv[1]);
